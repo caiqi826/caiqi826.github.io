@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>HUI</title>
+<link rel="stylesheet" type="text/css" href="./css/hui.css" />
+<style type="text/css">
+#logo{background:#C61523; float:left;height: 44px;}
+#logo img{width:88px;}
+#jd-header-search{height:30px; line-height:30px; background:#FFFFFF; border-radius:32px; text-align:center; width:220px; font-size:14px; color:#CCCCCC; float:right; margin:7px 18px 7px 0px;}
+.hui-header{display: block;}
+.hui-tab-title div{width:33.3%;}
+#hui-footer a{width:25%;}
+</style>
+</head>
+<body style="background: #FFFFFF;">
+<header class="hui-header">
+    <!--<div id="logo"><img src="img/logo.png" /></div>-->
+    <div id="jd-header-search" class="hui-icons hui-icons-search" onclick="hui.open('search.html');">搜索商品</div>
+</header>
+<div class="hui-wrap">
+    <div class="hui-tab-title" id="shopCate" >
+        <div class="hui-tab-active" id="shopCate1" onclick="showCate(0);">数码</div>
+        <div id="shopCate2" onclick="showCate(1);">手机</div>
+        <div id="shopCate3" onclick="showCate(2);">服装</div>
+    </div>
+</div>
+<div id="hui-footer">
+    <a href="javascript:void(0);" class="hui-footer-active">
+        <div class="hui-footer-icons hui-icons-home"></div>
+        <div class="hui-footer-text">首页</div>
+    </a>
+    <a href="javascript:hui.toast('新闻');">
+        <div class="hui-footer-icons hui-icons-news"></div>
+        <div class="hui-footer-text">资讯</div>
+    </a>
+    <a href="javascript:hui.open('cart.html',{},true);" id="cart">
+        <div class="hui-footer-icons hui-icons-forum"></div>
+        <div class="hui-footer-text">购物车</div>
+    </a>
+    <a href="javascript:my();">
+        <div class="hui-footer-icons hui-icons-my"></div>
+        <div class="hui-footer-text">我的</div>
+    </a>
+</div>
+<script src="js/hui.js" type="text/javascript" charset="utf-8"></script>
+<script type="text/javascript">
+//追加子窗口
+var subpages =  new Array(
+    new Array('productlist1.html', {left:0, top:"92px", bottom:'55px'}),
+    new Array('productlist2.html', {left:"100%", top:"92px", bottom:'55px'}),
+    new Array('productlist3.html', {left:"200%", top:"92px", bottom:'55px'})
+);
+hui.plusReady(function(){
+    hui.subpages(subpages);
+});
+function showCate(index){
+    for(var i = 0; i < subpages.length; i++){
+        var view = hui.getView(subpages[i][0]);
+        var left = (i - index) * 100 + '%';
+        view.setStyle({left:left});
+    }
+    hui('#shopCate').find('div').removeClass('hui-tab-active');
+    hui('#shopCate').find('div').eq(index).addClass('hui-tab-active');
+}
+function my(){
+	var res = isLogin();
+	//console.log(res);
+	if(res == null){
+		hui.open('login.html', {}, true);
+		return false;
+	}
+	hui.open('my.html', {}, true);
+}
+</script>
+</script>
+</body>
+</html>

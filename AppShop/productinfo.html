@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>HUI </title>
+<link rel="stylesheet" type="text/css" href="css/hui.css" />
+<style type="text/css">
+#product-img{width:100%;}
+#product-img img{width:100%;}
+#product-title{line-height:30px; padding:5px 10px; font-size:16px;}
+#product-price{height:30px; line-height:30px; padding:5px 10px; font-size:26px; color:#F0302F;}
+#product-desc{line-height:1.8em;}
+#product-desc img{width:100%;}
+#addToCard{width:40%; height:56px; line-height:56px; background:#F0302F; color:#FFFFFF; text-align:center; position:fixed; right:0px; bottom:0px; z-index:22;}
+.red{color:#F0302F !important;}
+</style>
+</head>
+<body>
+<header class="hui-header">
+    <div id="hui-back"></div>
+    <h1>加载中</h1>
+</header>
+<div class="hui-wrap">
+    <div id="product-img"></div>
+    <div id="product-title"></div>
+    <div id="product-price"></div>
+    <div class="hui-center-title" style="margin-top:15px;"><h1>商品描述</h1></div>
+    <div id="product-desc"></div>
+</div>
+<div style="height:60px;">&nbsp;</div>
+<div id="hui-footer">
+    <a href="javascript:hui.Back();" id="nav-home">
+        <div class="hui-footer-icons hui-icons-home"></div>
+        <div class="hui-footer-text">首页</div>
+    </a>
+    <a href="javascript:like();" id="nav-like">
+        <div class="hui-footer-icons hui-icons-like"></div>
+        <div class="hui-footer-text">关注</div>
+    </a>
+    <div id="addToCard">
+        加入购物车
+    </div>
+</div>
+<script type="text/javascript" src="js/hui.js" charset="UTF-8"></script>
+<script type="text/javascript">
+var _self;
+hui.plusReady(function(){
+    _self = plus.webview.currentWebview();
+    //获取商品详情
+    hui.loading();
+    hui.postJSON(
+        'http://shop.hcoder.net/myApi.php',
+        {act:"goodsInfo", id : _self.pid},
+        function(res){
+            hui.closeLoading();
+            //console.log(JSON.stringify(res));
+            //替换标题
+            hui('.hui-header').eq(0).find('h1').html(res.msg.goods_name);
+            hui('#product-title').html(res.msg.goods_name);
+            //替换图片
+            hui('#product-img').html('<img src="http://shop.hcoder.net/'+res.msg.original_img+'" />');
+            //价格
+            hui('#product-price').html('￥'+res.msg.market_price);
+            //描述
+            hui('#product-desc').html(res.msg.goods_desc);
+        }
+    );
+    checkLike();
+});
+function checkLike(){
+    var res = isLogin();
+    if(!res){return false;}
+    var SUID  = plus.storage.getItem('SUID');
+    var SRAND = plus.storage.getItem('SRAND');
+    hui.postJSON(
+        'http://shop.hcoder.net/myApi.php',
+        {act:"checkLike", id : _self.pid, suid : SUID, srand : SRAND},
+        function(res){
+            if(res.msg == 'yes'){
+                hui('#nav-like').find('div').addClass('red');
+            }else if(res.msg == 'no'){
+                hui('#nav-like').find('div').removeClass('red');
+            }
+        }
+    );
+ 
+}
+function like(){
+    var res = isLogin();
+    if(!res){
+        hui.open('login.html');
+        return false;
+    }
+    var SUID  = plus.storage.getItem('SUID');
+    var SRAND = plus.storage.getItem('SRAND');
+    hui.postJSON(
+        'http://shop.hcoder.net/myApi.php',
+        {act:"like", id : _self.pid, suid : SUID, srand : SRAND},
+        function(res){
+            if(res.msg == 'yes'){
+                hui('#nav-like').find('div').addClass('red');
+                hui.toast('收藏成功');
+            }else if(res.msg == 'no'){
+                hui('#nav-like').find('div').removeClass('red');
+                hui.toast('取消收藏');
+            }
+        }
+    );
+}
+
+//加入购物车
+hui('#addToCard').click(function(){
+    var shoppingCart = plus.storage.getItem('shoppingCart');
+    var isHave = false;
+    //判断购物车为空
+    if(shoppingCart == null){
+        shoppingCart = new Array({'pid':_self.pid, num:1});
+        //利用本地存储保存购物车数据
+        plus.storage.setItem('shoppingCart', JSON.stringify(shoppingCart));
+    }
+    //购物车不为空
+    else{
+        //判断是否已经有
+        var shoppingCart = JSON.parse(shoppingCart);
+        for(var i = 0; i < shoppingCart.length; i++){
+            if(shoppingCart[i].pid == _self.pid){
+                shoppingCart[i].num++;
+                isHave = true;
+                break;
+            }
+        }
+        //没有改 商品
+        if(!isHave){shoppingCart.push({'pid':_self.pid, num:1});}
+        plus.storage.setItem('shoppingCart', JSON.stringify(shoppingCart));
+        var shoppingCart = plus.storage.getItem(shoppingCart);
+       
+        //去购物车页面
+        hui.open('cart.html',{},true);
+    }
+});
+</script>
+</body>
+</html>

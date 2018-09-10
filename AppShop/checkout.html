@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>HUI </title>
+<link rel="stylesheet" type="text/css" href="css/hui.css" />
+<style type="text/css">
+#total{width:50%; height:54px; line-height:54px; color:#F0302F; text-align:center; position:fixed; font-size:18px; left:0px; bottom:0px; z-index:22;}
+#checkout{width:50%; height:54px; line-height:54px; background:#F0302F; color:#FFFFFF; text-align:center; position:fixed; right:0px; bottom:0px; z-index:22;}
+.red{color:#C61523 !important;}
+
+.hui-number-box{border:1px solid #D1D1D1; height:28px; float:left; border-radius:2px; -webkit-border-radius:2px;}
+.hui-number-box input{float:left; height:28px; line-height:28px; padding:0px 5px; text-align:center; background:#FFFFFF; width:30px; border:0px; font-size:14px;}
+.hui-number-box .reduce{float:left; height:28px; line-height:28px; width:28px; text-align:center; background: #F9F9F9; font-size:28px;}
+.hui-number-box .add{float:left; height:28px; line-height:28px; width:28px; text-align:center; background: #F9F9F9; font-size:22px;}
+
+.removeItem{float:right; padding:0px 10px; line-height:28px; color:#999999; font-size:14px;}
+
+.address{margin:10px; background:#FFFFFF; padding:10px; line-height:1.8em;}
+.address h1{font-size:16px;}
+</style>
+</head>
+<body style="background:#F4F5F6;">
+<header class="hui-header">
+    <div id="hui-back"></div>
+    <h1>订单结算</h1>
+</header>
+<div class="hui-wrap">
+    <div class="hui-media-list"style="padding:18px 5px;">
+        <ul id="MainList"></ul>
+    </div>
+    <div class="hui-center-title" style="margin:0px; padding:0px;">
+        <h1>收货地址</h1>
+        <input type="hidden" value="0" id="addressHidden" />
+    </div>
+    <div id="addressSelect">
+        <div style="line-height:100px; margin:10px; background:#FFFFFF; font-size:100px; color:#B8BBBF; text-align:center;">+</div>
+    </div>
+    <div class="hui-center-title" style="margin:0px; padding:0px;"><h1>支付方式</h1></div>
+    <div style="padding:10px;">
+        <div class="hui-form-items" id="payway">
+            <div class="hui-form-radios">
+                <input type="radio" value="1" name="payway" id="payway1" checked="checked" /><label for="payway1">在线支付</label>
+            </div>
+            <div class="hui-form-radios">
+                <input type="radio" value="2" name="payway" id="payway2" /><label for="payway2">货到付款</label>
+            </div>
+        </div>
+    </div>
+</div>
+<div style="height:60px;">&nbsp;</div>
+<div id="hui-footer">
+    <div id="total"></div>
+    <div id="checkout">
+        提交定单
+    </div>
+</div>
+<script type="text/javascript" src="js/hui.js" charset="UTF-8"></script>
+<script type="text/javascript">
+//订单计算
+hui('#checkout').click(function(){
+    var addressId = hui('#addressHidden'). val();
+    if(addressId == 0){
+        hui.toast('请选择地址！');
+        return ;
+    }
+    var shoppingCart = plus.storage.getItem('shoppingCart');
+    if(shoppingCart == null || shoppingCart == '[]'){
+        hui.toast('购物车为空！');
+        return ;
+    }
+    var payway;
+    hui('#payway').find('input').each(function(cObj){if(cObj.checked){payway = cObj.value;}});
+    
+    hui.loading();
+    var SUID  = plus.storage.getItem('SUID');
+    var SRAND = plus.storage.getItem('SRAND');
+    hui.postJSON(
+        'http://shop.hcoder.net/myApi.php',
+        {act:"checkOut", aid : addressId,  suid : SUID, srand : SRAND, cart : shoppingCart, payway : payway},
+        function(res){
+            if(res.msg == 'ok'){
+                hui.toast('订单提交成功');
+                //清空购物车并关闭购物车页面
+				plus.storage.removeItem('shoppingCart');
+				var index = plus.webview.getLaunchWebview();
+				index.evalJS('hui("#cart")').removePointMsg();
+				var cart = hui.getView('cart.html');
+				if(cart){cart.close();}
+				//判断支付类型
+				if(payway == 1){
+				//微信支付
+				payOrder(res.oid);
+				}else{
+					hui.toast('订单提交成功');
+					hui.open('myorder.html',{},true);
+				}
+                hui.closeLoading();
+            }else{
+                hui.toast('提交失败，请重试！');
+                hui.closeLoading();
+            }
+        }
+    );
+});
+//选择新地址
+hui('#addressSelect').click(function(){
+    var res = isLogin();
+    if(!res){return false;}
+    hui.open('address.html',{},true);
+});
+//读取并选择地址
+function getAddress(address){
+    hui.loading();
+    var SUID  = plus.storage.getItem('SUID');
+    var SRAND = plus.storage.getItem('SRAND');
+    hui.postJSON(
+        'http://shop.hcoder.net/myApi.php',
+        {act:"getAddress", aid : address,  suid : SUID, srand : SRAND},
+        function(res){
+            hui.closeLoading();
+            if(res.msg != 'null'){
+                var html = '';
+                html += '<div class="address">'+
+                    '<h1>'+res.msg.consignee+'</h1>'+
+                    '<p>电话  : '+res.msg.mobile+'</p>'+
+                    '<p>地址  : '+res.msg.province+res.msg.city+res.msg.district+res.msg.address+'</p>'+
+                '</div>';
+                hui('#addressSelect').html(html);
+                hui('#addressHidden').val(address);
+            }
+        }
+    );
+}
+
+hui('#checkout').click(function(){
+    var res = isLogin();
+    if(!res){
+        return false;
+    }
+});
+var numRes = {};
+hui.plusReady(function(){
+    var shoppingCart = plus.storage.getItem('shoppingCart');
+    if(shoppingCart == null || shoppingCart == '[]'){
+        countPrice();
+        hui.toast('购物车为空！');
+        return ;
+    }
+    shoppingCart = JSON.parse(shoppingCart);
+    var goodsIds = new Array();
+    for(var i = 0; i < shoppingCart.length; i++){
+        goodsIds.push(shoppingCart[i].pid);
+        var kName = 'num'+shoppingCart[i].pid;
+        eval('numRes.'+kName+' = shoppingCart['+i+'].num;')
+    }
+    getProduct(goodsIds);
+});
+function getProduct(goodsIds){
+    hui.loading();
+    hui.postJSON(
+        'http://shop.hcoder.net/myApi.php',
+        {act:"goodsInCart", ids : goodsIds.join(',')},
+        function(res){
+            for(var i = 0; i < res.msg.length; i++){
+                var li = document.createElement('li');
+                li.setAttribute('price', res.msg[i].shop_price+'');
+                li.setAttribute('id', 'li'+res.msg[i].goods_id);
+                var kName = 'num'+res.msg[i].goods_id;
+                eval('var numberHere = numRes.'+kName+';');
+                li.setAttribute('buynum', numberHere);
+                li.innerHTML = '<div class="hui-media-list-img"><img src="http://shop.hcoder.net/'+res.msg[i].goods_thumb+'" /></div>'+
+                    '<div class="hui-media-content">'+
+                        '<h1>['+res.msg[i].goods_id+'] '+res.msg[i].goods_name+'</h1>'+
+                        '<p>￥'+res.msg[i].shop_price+' X '+numberHere+'</p>'+
+                    '</div>';
+                hui(li).appendTo('#MainList');
+            }
+            hui. closeLoading();
+            hui.numberBox();
+            countPrice();
+        }
+    );
+}
+//计算总价
+function countPrice(){
+    var total = 0, cartNum = 0;
+    hui('#MainList').find('li').each(function(obj){
+        var li = hui(obj);
+        var price = li.attr('price');
+        var num   = li.attr('buynum');
+        cartNum++;
+        total += price * num;
+    });
+    hui('#total').html('总计：￥'+total);
+    var index = plus.webview.getLaunchWebview();
+    if(cartNum > 0){
+        index.evalJS('hui("#cart").pointMsg('+cartNum+');');
+    }else{
+        index.evalJS('hui("#cart").removePointMsg();');
+    }
+}
+</script>
+</body>
+</html>

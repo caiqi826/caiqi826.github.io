@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>HUI </title>
+<link rel="stylesheet" type="text/css" href="css/hui.css" />
+<style type="text/css">
+.address{margin:10px; background:#FFFFFF; padding:10px; line-height:1.8em;}
+.address h1{font-size:16px;}
+</style>
+</head>
+<body style="background:#F4F5F6;">
+<header class="hui-header">
+    <div id="hui-back"></div>
+    <h1>收货地址管理</h1>
+</header>
+<div class="hui-wrap">
+    <div class="hui-center-title"><h1>已保存的地址</h1></div>
+    <div id="addressIn"></div>
+    <div class="hui-center-title"><h1>添加新的地址</h1></div>
+    <div style="margin:18px 10px;" class="hui-form" id="form1">
+        <div class="hui-form-items">
+            <input type="text" class="hui-input hui-input-clear" id="nickname" checkType="string" checkData="2,10" checkMsg="称呼应为2~10个字符" placeholder="称呼" value="hcoder" />
+        </div>
+        <div class="hui-form-items" id="picker">
+            点击这里选择地区&nbsp;<span class="hui-icons hui-icons-click"></span>
+        </div>
+        <div class="hui-form-items">
+            <input type="text" class="hui-input hui-input-clear" id="address" value="高新二路558#" placeholder="详细地址" checkType="string" checkData="5,50" checkMsg="详细地址应为5~50个字符" />
+        </div>
+        <div class="hui-form-items">
+            <input type="text" class="hui-input hui-input-clear" id="phone" value="18108888888" checkType="phone" checkMsg="手机号码格式错误"  placeholder="手机号码" />
+        </div>
+        <div class="hui-form-items">
+           <button type="button" class="hui-button hui-button-small hui-fr hui-primary" id="butSubmit">提交</button>
+        </div>
+        <input type="hidden" id="sheng" value="0" checkType="notSame" checkData="0" checkMsg="请选择地区" />
+        <input type="hidden" id="shi" value="0" />
+        <input type="hidden" id="qu" value="0" />
+    </div>
+</div>
+<script type="text/javascript" src="js/hui.js" charset="UTF-8"></script>
+<script type="text/javascript" src="js/hui-picker.js" charset="UTF-8"></script>
+<script type="text/javascript" src="js/hui-form.js" charset="UTF-8"></script>
+<script type="text/javascript">
+var picker;
+hui('#butSubmit').click(function(){
+    var res = huiFormCheck('#form1');
+    if(!res){return false;}
+    var SUID  = plus.storage.getItem('SUID');
+    var SRAND = plus.storage.getItem('SRAND');
+    hui.postJSON(
+        'http://shop.hcoder.net/myApi.php',
+        {
+            act : "addAddress",
+            suid : SUID, 
+            srand : SRAND, 
+            sheng : hui('#sheng').val(),
+            shi : hui('#shi').val(),
+            qu : hui('#qu').val(),
+            name : hui('#nickname').val(),
+            phone : hui('#phone').val(),
+            address : hui('#address').val()
+        },
+        function(res){
+            if(res.msg == 'ok'){
+                hui.toast('添加成功！');
+                getAddress();
+            }else{
+                hui.toast('服务器忙，请重试！');
+            }
+        }
+    );
+});
+hui.plusReady(function(){
+    getAddress();
+});
+//获取省份信息
+hui.loading();
+hui.postJSON(
+    'http://shop.hcoder.net/myApi.php',
+    {act:"goodsCities", pid : 1},
+    function(res){
+        hui.closeLoading();
+        picker = new huiPicker('#picker', function(){
+            var sheng     = picker.getVal(0);
+            hui('#sheng').val(sheng);
+            var shi       = picker.getVal(1);
+            hui('#shi').val(shi);
+            var qu        = picker.getVal(2);
+            hui('#qu').val(qu);
+            var shengText = picker.getText(0);
+            var shiText   = picker.getText(1);
+            var quText    = picker.getText(2);
+            hui('#picker').html('地区：'+shengText + shiText + quText);
+        });
+        picker.level = 3;
+        picker.bindRelevanceData(res.msg);
+    }
+);
+function getAddress(){
+    hui.loading();
+    var SUID  = plus.storage.getItem('SUID');
+    var SRAND = plus.storage.getItem('SRAND');
+    hui.postJSON(
+        'http://shop.hcoder.net/myApi.php',
+        {act:"goodsAddress", suid : SUID, srand : SRAND},
+        function(res){
+            hui.closeLoading();
+            if(res.msg == 'null'){
+                hui.toast('请填写收货人信息');
+                return false;
+            }
+            var html = '';
+            for(var i = 0; i < res.msg.length; i++){
+                html += '<div class="address">'+
+                    '<h1>'+res.msg[i].consignee+'</h1>'+
+                    '<p>电话  : '+res.msg[i].mobile+'</p>'+
+                    '<p>地址  : '+res.msg[i].province+res.msg[i].city+res.msg[i].district+res.msg[i].address+'</p>'+
+                    '<p><button type="button" class="hui-button hui-button-small hui-fr" onclick="selectAddress('+res.msg[i].address_id+');">使用地址</button></p>'+
+                '</div>';
+            }
+            hui('#addressIn').html(html);
+        }
+    );
+}
+function selectAddress(address){
+    var checkout = hui.getView('checkout.html');
+    checkout.evalJS('getAddress('+address+');');
+    hui.Back();
+}
+</script>
+</body>
+</html>
